@@ -7,7 +7,7 @@ import requests
 import time
 from typing import Optional
 
-similarity = pickle.load(open('similarity.pkl', 'rb'))
+similarity_data = pickle.load(open('similarity_top20.pkl', 'rb'))
 movie_dict = pickle.load(open('movie_dict.pkl', 'rb'))
 movies = pd.DataFrame(movie_dict)
 
@@ -24,9 +24,9 @@ def get_movie_poster_cached(movie_id: int) -> Optional[str]:
     if movie_id in poster_cache:
         return poster_cache[movie_id]
 
-    for attempt in range(5):
+    for attempt in range(7):
         try:
-            time.sleep(1.75)
+            time.sleep(2)
             response = requests.get(
                 f"{TMDB_BASE_URL}/movie/{movie_id}",
                 params={"api_key": TMDB_API_KEY}
@@ -63,8 +63,8 @@ def recommend(movie):
     cleaned = clean_title(movie)
 
     clean_titles_list = movies['clean_title'].tolist()
-    match = process.extractOne(cleaned, clean_titles_list, scorer=fuzz.token_sort_ratio)  # type: ignore
-
+    match = process.extractOne(cleaned, clean_titles_list, scorer=fuzz.partial_ratio)
+    
     if match and match[1] >= 70:
         matched_title = match[0]
         matched_index = movies[movies['clean_title'] == matched_title].index[0]
@@ -72,9 +72,10 @@ def recommend(movie):
         original_title = movies.loc[matched_index, 'title']
         original_id = movies.loc[matched_index, 'movie_id']
 
-        distances = similarity[matched_index]
-        movie_list = sorted(list(enumerate(distances)), reverse=True, key=lambda x: x[1])[
-                     1:5]
+        # Use the pre-computed list directly from similarity_data
+        # This list already contains the top 20 (including self) sorted correctly.
+        # [1:5] gets the next 4 movies (after the self-recommendation at index 0).
+        movie_list = similarity_data[matched_index][1:5]
 
         st.subheader(f"🎥 Recommending movies based on your search '{original_title}':")
 
@@ -111,6 +112,5 @@ def recommend(movie):
 if st.button('Search'):
     if name.strip() != "":
         recommend(name)
-
     else:
         st.warning("Please enter a movie title!")
