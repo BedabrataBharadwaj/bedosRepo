@@ -64,7 +64,7 @@ def recommend(movie):
 
     clean_titles_list = movies['clean_title'].tolist()
     match = process.extractOne(cleaned, clean_titles_list, scorer=fuzz.partial_ratio)
-    
+
     if match and match[1] >= 70:
         matched_title = match[0]
         matched_index = movies[movies['clean_title'] == matched_title].index[0]
